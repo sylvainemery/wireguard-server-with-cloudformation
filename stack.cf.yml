@@ -52,6 +52,26 @@ Parameters:
     Type: 'AWS::EC2::KeyPair::KeyName'
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
 
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "Instance Configuration"
+        Parameters:
+          - InstanceTypeParameter
+          - KeyName #TODO: remove the use of SSH?
+      -
+        Label:
+          default: "WireGuard Configuration"
+        Parameters:
+          - WireGuardPort
+          - TunnelServerIP
+          - TunnelPeerIP
+    ParameterLabels: 
+      InstanceTypeParameter: 
+        default: "Instance Type"
+
 Mappings:
   AWSRegionArch2AMI: #Id of the official Ubuntu Focal Fossa 20.04 AMI
     us-east-1:
