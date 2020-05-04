@@ -26,6 +26,17 @@ Parameters:
     Type: 'AWS::EC2::KeyPair::KeyName'
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
   
+  VPNDomainHostedZoneId:
+    Description: Route53 zone
+    Type: 'AWS::Route53::HostedZone::Id'
+    ConstraintDescription: must be an existing Route53 hosted zone in the region of the server
+  
+  VPNServerDomainName:
+    Description: Full domain name (FQDN) used by the server
+    Type: String
+    AllowedPattern: '((?=[a-z0-9-]{1,63}\.)([a-z0-9-]{1,63}\.)[a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,63}'
+    ConstraintDescription: must be a valid domain name including the host part (e.g vpn.example.net)
+
   TunnelServerIP:
     Description: WireGuard server VPN tunnel IP address
     Type: String
@@ -57,6 +68,8 @@ Metadata:
         Parameters:
           - InstanceTypeParameter
           - KeyName #TODO: remove the use of SSH?
+          - VPNDomainHostedZoneId
+          - VPNServerDomainName
       -
         Label:
           default: "WireGuard Configuration"
@@ -64,9 +77,14 @@ Metadata:
           - WireGuardPort
           - TunnelServerIP
           - TunnelPeerIP
+  
     ParameterLabels: 
       InstanceTypeParameter: 
         default: "Instance Type"
+      VPNDomainHostedZoneId: 
+        default: "Domain Hosted Zone"
+      VPNServerDomainName: 
+        default: "Server domain name"
 
 Mappings:
   AWSRegionArch2AMI: #Id of the official Ubuntu Focal Fossa 20.04 AMI
@@ -242,9 +260,25 @@ Resources:
       ResourceSignal:
         Timeout: PT5M
 
+  wgDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref VPNDomainHostedZoneId
+      Comment: !Ref AWS::StackName
+      Name: !Ref VPNServerDomainName
+      TTL: 300
+      Type: A
+      ResourceRecords:
+        - !GetAtt wgEC2Instance.PublicIp
+
 Outputs:
   wgServerIP:
     Description: Public IP address of the WireGuard VPN server
-    Value: !GetAtt [wgEC2Instance, PublicIp]
+    Value: !GetAtt wgEC2Instance.PublicIp
     Export:
       Name: !Sub "${AWS::StackName}-PublicIP"
+  wgServerDomainName:
+    Description: FQDN of the WireGuard VPN server
+    Value: !Ref wgDNSRecord
+    Export:
+      Name: !Sub "${AWS::StackName}-DomainName"
